@@ -43,7 +43,6 @@ class ProjectInfo(Base):
     pk = Column(Text, primary_key=True)
     task = Column(Text)
 
-
 class Context(Base):
     __tablename__ = db_prefix + 'Context'
 
@@ -124,6 +123,9 @@ class Task(Base):
 
     children = relationship('Task', primaryjoin='Task.persistentIdentifier == Task.parent_id')
 
+    sequential = Column(Integer)
+    effectiveFlagged = Column(Integer)
+
     def __repr__(self):
         return self.name
 
@@ -148,6 +150,13 @@ class Database(object):
     def get_context(cls, context_name):
         return Context.get(context_name)
 
+    @classmethod
+    def get_tasks(cls):
+        return session.query(Task)
+        
+    @classmethod
+    def get_flagged_tasks(cls):
+        return cls.get_tasks().filter(Task.effectiveFlagged == 1)
 
 if __name__ == '__main__':
     tasks = Context.get('Costco').tasks
