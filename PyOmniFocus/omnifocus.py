@@ -1,9 +1,11 @@
 import os
 
-from sqlalchemy import Column, Integer, Text, String, Boolean, \
+from sqlalchemy import Column, Integer, Text, String, Boolean, Float, \
      ForeignKey, DateTime, create_engine
 from sqlalchemy.orm import relationship, backref, sessionmaker, aliased
 from sqlalchemy.ext.declarative import declarative_base
+
+from datetime import datetime
 
 sqlite_db_filename = os.path.expanduser('~/Library/Caches/com.omnigroup.OmniFocus/OmniFocusDatabase2')
 engine = create_engine('sqlite:///' + sqlite_db_filename, echo=False)
@@ -104,8 +106,11 @@ class Task(Base):
     """
 
     __tablename__ = db_prefix + 'Task'
-
+    
     persistentIdentifier = Column(Text, primary_key=True)
+    
+    name = Column(Text)
+    
     blocked = Column(Integer)
     blockedByFutureStartDate = Column(Integer)
     childrenCount = Column(Integer)
@@ -115,7 +120,28 @@ class Task(Base):
     containingProjectContainsSingletons = Column(Integer)
     containingProjectInfo = Column(Text)
     containsNextTask = Column(Integer)
-    name = Column(Text)
+    
+    # hack. DateAdded is timestamp and stores the values as float.
+    # SQlAlchemy expectes the value to be a string.
+    #TOFO resolve SqlIte::timestamp within SqlAlchemy so that it can handle floats
+    dateAdded = Column(Float)
+    dateModified = Column(Float)
+    dateCompleted = Column(Float)
+    
+    effectiveContainingProjectInfoActive = Column(Integer) 
+    effectiveContainingProjectInfoRemaining = Column(Integer)
+    effectiveFlagged = Column(Integer)
+    effectiveInInbox = Column(Integer)
+    flagged = Column(Integer)
+    hasCompletedDescendant = Column(Integer)
+    hasFlaggedTaskInTree = Column(Integer)
+    hasUnestimatedLeafTaskInTree = Column(Integer)
+    inInbox = Column(Integer)
+    isDueSoon = Column(Integer)
+    isOverdue = Column(Integer)
+    rank = Column(Integer)
+    sequential = Column(Integer)
+    
     context_id = Column('context', Text, ForeignKey('Context.persistentIdentifier'))
     context = relationship('Context', backref=backref('Task'))
     projectInfo = Column(Text)
@@ -123,16 +149,24 @@ class Task(Base):
 
     children = relationship('Task', primaryjoin='Task.persistentIdentifier == Task.parent_id')
 
-    sequential = Column(Integer)
-    effectiveFlagged = Column(Integer)
-
     def __repr__(self):
         return self.name
 
     def context_name(self):
         return task.context.name if self.context else 'None'
 
-
+    def _changeOmnisTimestampToUTCString(self, omniFocusTimestamp):
+        return datetime.utcfromtimestamp( omniFocusTimestamp + 978307200 ).strftime( '%Y-%m-%d %H:%M:%S' )
+        
+    def getDateAddedAsUtcString(self):
+        return self._changeOmnisTimestampToUTCString( self.dateAdded )
+        
+    def getDateModifiedAsUtcString(self):
+        return self._changeOmnisTimestampToUTCString( self.dateModified )
+        
+    def getDateCompletedAsUtcString(self):
+        return self._changeOmnisTimestampToUTCString( self.dateCompleted )
+    
 class Database(object):
     @classmethod
     def get_projects(cls):
@@ -155,8 +189,8 @@ class Database(object):
         return session.query(Task)
         
     @classmethod
-    def get_flagged_tasks(cls):
-        return cls.get_tasks().filter(Task.effectiveFlagged == 1)
+    def getTasksWhichAreFlaggedAndUncompleted(cls):
+        return cls.get_tasks().filter( Task.effectiveFlagged == 1 and Task.dateCompleted == None )
 
 if __name__ == '__main__':
     tasks = Context.get('Costco').tasks

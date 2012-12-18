@@ -1,4 +1,5 @@
 import sys
+from PyOmniFocus import __version__
 
 extra = {}
 if sys.version_info >= (3, 0):
@@ -11,12 +12,11 @@ except ImportError:
 
 author = "Marc Abramowitz"
 email = "marc@marc-abramowitz.com"
-version = "0.0.1-dev"
 desc = """Experimental Python interface to OmniFocus"""
 long_desc = open('README.md').read()
 
 setup(name='PyOmniFocus',
-      version=version,
+      version=__version__,
       description=desc,
       long_description=long_desc,
       data_files=[('', ['README.md'])],
